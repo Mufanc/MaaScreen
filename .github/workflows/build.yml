@@ -1,0 +1,47 @@
+name: Build CI
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+      - '!.github/workflows/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build CI
+    runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.event.head_commit.message, '[skip ci]') }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Gradle wrapper validation
+        uses: gradle/wrapper-validation-action@v1
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Build with Gradle
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:aRelease
+
+      - name: Rename APK
+        run: |
+          mv app/build/outputs/apk/release/*-release-*.apk maa-screen.apk
+
+      - name: Upload Artifacts
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: "MaaScreen"
+          path: "maa-screen.apk"
