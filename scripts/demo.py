@@ -1,4 +1,3 @@
-import socket
 import subprocess
 import subprocess as sp
 from base64 import b64decode
@@ -21,21 +20,10 @@ def deploy_apk():
 
 class MaaScreen(object):
     def __init__(self):
-        sp.call(['adb', 'reverse', f'tcp:{LISTEN_PORT}', f'tcp:{LISTEN_PORT}'])
-
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.bind(('127.0.0.1', LISTEN_PORT))
-        server.listen(1)
-
         self.adb = sp.Popen(
-            [
-                'adb', 'shell',
-                f'app_process -Djava.class.path={DEPLOY_PATH} / {APP_MAIN} | nc -w 3 127.0.0.1 {LISTEN_PORT}'
-            ],
-            stdin=sp.PIPE
+            ['adb', 'shell', 'app_process', f'-Djava.class.path={DEPLOY_PATH}', '/system/bin', APP_MAIN],
+            stdin=sp.PIPE, stdout=sp.PIPE
         )
-
-        self.client = server.accept()[0].makefile()
 
     def command(self, *args, has_response=False):
         self.adb.stdin.write((' '.join(args) + '\n').encode())
@@ -44,10 +32,10 @@ class MaaScreen(object):
         if has_response:
             output = []
 
-            while (line := self.client.readline().strip()) or not output:
+            while (line := self.adb.stdout.readline().strip()) or not output:
                 output.append(line)
 
-            return ''.join(output)
+            return b''.join(output).decode()
 
 
 def simple_controller(backend: MaaScreen):
